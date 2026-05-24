@@ -162,8 +162,13 @@
                             headers: { 'Content-Type': 'application/json' },
                             body: JSON.stringify({ symbol: this.stockQuery, timeframe: this.timeframe })
                         });
-                        const data = await res.json();
-                        this.stockAnalysis = data.ai_analysis || data.error || 'No analysis available';
+                        const text = await res.text();
+                        try {
+                            const data = JSON.parse(text);
+                            this.stockAnalysis = data.ai_analysis || data.error || JSON.stringify(data, null, 2);
+                        } catch {
+                            this.stockAnalysis = text || 'No response from server';
+                        }
                     } catch (e) { this.stockAnalysis = 'Error: ' + e.message; }
                 },
 
@@ -177,8 +182,13 @@
                             headers: { 'Content-Type': 'application/json' },
                             body: JSON.stringify({ symbol: this.stockQuery, timeframe: this.timeframe })
                         });
-                        const data = await res.json();
-                        this.debateResult = data.full_debate || data.error || 'Debate failed';
+                        const text = await res.text();
+                        try {
+                            const data = JSON.parse(text);
+                            this.debateResult = data.full_debate || data.error || JSON.stringify(data, null, 2);
+                        } catch {
+                            this.debateResult = text || 'No response from server';
+                        }
                     } catch (e) { this.debateResult = 'Error: ' + e.message; }
                 },
 

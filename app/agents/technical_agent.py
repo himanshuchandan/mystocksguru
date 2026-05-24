@@ -138,6 +138,12 @@ def analyze_stock_technical(symbol: str) -> Optional[dict]:
     result["momentum_score"] = score
     result["signal"] = "STRONG_BUY" if score >= 4 else "BUY" if score >= 3 else "NEUTRAL" if score >= 2 else "WEAK"
 
+    # Convert numpy types to native Python types for JSON serialization
+    import numpy as np
+    for k, v in result.items():
+        if isinstance(v, (np.bool_, np.generic)):
+            result[k] = v.item()
+
     return result
 
 
