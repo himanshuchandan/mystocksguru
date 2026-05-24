@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Market Copilot</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js" defer></script>
+    <style>
+        body { background: #0f172a; }
+        .glass { background: rgba(30, 41, 59, 0.8); backdrop-filter: blur(10px); border: 1px solid rgba(148, 163, 184, 0.1); }
+        .pulse-green { animation: pulse-g 2s infinite; }
+        @keyframes pulse-g { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
+    </style>
+</head>
+<body class="text-slate-200 min-h-screen" x-data="dashboard()">
+    <!-- Header -->
+    <header class="glass sticky top-0 z-50 px-6 py-4 flex justify-between items-center">
+        <div class="flex items-center gap-3">
+            <span class="text-2xl">🤖</span>
+            <h1 class="text-xl font-bold bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent">
+                AI Market Copilot
+            </h1>
+        </div>
+        <div class="flex items-center gap-4">
+            <span class="flex items-center gap-2 text-sm text-slate-400">
+                <span class="w-2 h-2 rounded-full bg-green-400 pulse-green"></span> Running Locally
+            </span>
+            <button @click="triggerScan()" :disabled="scanning"
+                class="px-4 py-2 bg-blue-600 hover:bg-blue-500 rounded-lg text-sm font-medium disabled:opacity-50 transition">
+                <span x-show="!scanning">🔍 Scan Now</span>
+                <span x-show="scanning">⏳ Scanning...</span>
+            </button>
+        </div>
+    </header>
+
+    <main class="max-w-7xl mx-auto p-6 space-y-6">
+        <!-- Market Regime Banner -->
+        <div class="glass rounded-xl p-4 flex items-center justify-between" x-show="regime">
+            <div class="flex items-center gap-3">
+                <span class="text-2xl" x-text="regime === 'RISK_ON' ? '🟢' : regime === 'RISK_OFF' ? '🔴' : '🟡'"></span>
+                <div>
+                    <p class="text-sm text-slate-400">Market Regime</p>
+                    <p class="font-bold text-lg" x-text="regime"></p>
+                </div>
+            </div>
+            <p class="text-sm text-slate-400" x-text="lastScanTime"></p>
+        </div>
+
+        <!-- Macro Grid -->
+        <section>
+            <h2 class="text-lg font-semibold mb-3 text-slate-300">📊 Macro Dashboard</h2>
+            <div class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-3">
+                <template x-for="(val, key) in macro" :key="key">
+                    <div class="glass rounded-lg p-3">
+                        <p class="text-xs text-slate-400 uppercase" x-text="key.replace('_', ' ')"></p>
+                        <p class="text-lg font-bold" x-text="val.value"></p>
+                        <p class="text-sm" :class="val.change_pct >= 0 ? 'text-green-400' : 'text-red-400'"
+                           x-text="(val.change_pct >= 0 ? '+' : '') + val.change_pct + '%'"></p>
+                    </div>
+                </template>
+            </div>
+        </section>
+
+        <!-- AI Intelligence -->
+        <section x-show="intelligence">
+            <h2 class="text-lg font-semibold mb-3 text-slate-300">🧠 AI Intelligence Report</h2>
+            <div class="glass rounded-xl p-6 whitespace-pre-wrap text-sm leading-relaxed" x-text="intelligence"></div>
+        </section>
+
+        <!-- Stock Analyzer -->
+        <section>
+            <h2 class="text-lg font-semibold mb-3 text-slate-300">🎯 Analyze Stock</h2>
+            <div class="glass rounded-xl p-4 flex gap-3">
+                <input x-model="stockQuery" placeholder="Enter symbol (e.g. RELIANCE)"
+                    class="flex-1 bg-slate-800 border border-slate-600 rounded-lg px-4 py-2 text-sm focus:outline-none focus:border-blue-500"
+                    @keyup.enter="analyzeStock()">
+                <select x-model="timeframe" class="bg-slate-800 border border-slate-600 rounded-lg px-3 py-2 text-sm">
+                    <option value="swing">Swing</option>
+                    <option value="intraday">Intraday</option>
+                    <option value="positional">Positional</option>
+                    <option value="long-term">Long Term</option>
+                </select>
+                <button @click="analyzeStock()" class="px-4 py-2 bg-purple-600 hover:bg-purple-500 rounded-lg text-sm font-medium transition">
+                    Analyze
+                </button>
+                <button @click="debateStock()" class="px-4 py-2 bg-amber-600 hover:bg-amber-500 rounded-lg text-sm font-medium transition">
+                    🗣️ Debate
+                </button>
+            </div>
+            <div x-show="stockAnalysis" class="glass rounded-xl p-6 mt-3 whitespace-pre-wrap text-sm leading-relaxed" x-text="stockAnalysis"></div>
+            <div x-show="debateResult" class="glass rounded-xl p-6 mt-3 whitespace-pre-wrap text-sm leading-relaxed" x-text="debateResult"></div>
+        </section>
+
+        <!-- Portfolio -->
+        <section>
+            <h2 class="text-lg font-semibold mb-3 text-slate-300">💼 Portfolio</h2>
+            <div class="glass rounded-xl p-4">
+                <button @click="loadPortfolio()" class="px-4 py-2 bg-slate-700 hover:bg-slate-600 rounded-lg text-sm mb-3 transition">
+                    Load Portfolio
+                </button>
+                <div x-show="portfolio.status === 'not_connected'" class="text-slate-400 text-sm">
+                    Kite not connected. Add credentials to .env file.
+                </div>
+                <div x-show="portfolio.num_holdings > 0">
+                    <div class="grid grid-cols-3 gap-4 mb-3">
+                        <div><span class="text-xs text-slate-400">Invested</span><p class="font-bold">₹<span x-text="portfolio.total_invested?.toLocaleString()"></span></p></div>
+                        <div><span class="text-xs text-slate-400">Current</span><p class="font-bold">₹<span x-text="portfolio.total_current?.toLocaleString()"></span></p></div>
+                        <div><span class="text-xs text-slate-400">P&L</span><p class="font-bold" :class="portfolio.overall_pnl_pct >= 0 ? 'text-green-400' : 'text-red-400'" x-text="portfolio.overall_pnl_pct + '%'"></p></div>
+                    </div>
+                    <template x-for="alert in portfolio.risk_alerts || []">
+                        <p class="text-yellow-400 text-sm" x-text="alert"></p>
+                    </template>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <script>
+        function dashboard() {
+            return {
+                scanning: false,
+                regime: '',
+                macro: {},
+                intelligence: '',
+                lastScanTime: '',
+                stockQuery: '',
+                timeframe: 'swing',
+                stockAnalysis: '',
+                debateResult: '',
+                portfolio: {},
+
+                async triggerScan() {
+                    this.scanning = true;
+                    try {
+                        const res = await fetch('/api/alerts/trigger-scan', { method: 'POST' });
+                        const data = await res.json();
+                        this.regime = data.result?.regime || '';
+                        this.intelligence = data.result?.intelligence_preview || '';
+                        this.lastScanTime = new Date().toLocaleTimeString();
+                        await this.loadMacro();
+                    } catch (e) { console.error(e); }
+                    this.scanning = false;
+                },
+
+                async loadMacro() {
+                    try {
+                        const res = await fetch('/api/analysis/market-summary');
+                        const data = await res.json();
+                        this.macro = data.macro || {};
+                        this.regime = data.regime || this.regime;
+                    } catch (e) { console.error(e); }
+                },
+
+                async analyzeStock() {
+                    if (!this.stockQuery) return;
+                    this.stockAnalysis = 'Analyzing...';
+                    this.debateResult = '';
+                    try {
+                        const res = await fetch('/api/analysis/stock', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ symbol: this.stockQuery, timeframe: this.timeframe })
+                        });
+                        const data = await res.json();
+                        this.stockAnalysis = data.ai_analysis || data.error || 'No analysis available';
+                    } catch (e) { this.stockAnalysis = 'Error: ' + e.message; }
+                },
+
+                async debateStock() {
+                    if (!this.stockQuery) return;
+                    this.debateResult = '🗣️ Running debate (Bull vs Bear vs Risk)... This takes ~30 seconds...';
+                    this.stockAnalysis = '';
+                    try {
+                        const res = await fetch('/api/analysis/debate', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ symbol: this.stockQuery, timeframe: this.timeframe })
+                        });
+                        const data = await res.json();
+                        this.debateResult = data.full_debate || data.error || 'Debate failed';
+                    } catch (e) { this.debateResult = 'Error: ' + e.message; }
+                },
+
+                async loadPortfolio() {
+                    try {
+                        const res = await fetch('/api/portfolio/analysis');
+                        this.portfolio = await res.json();
+                    } catch (e) { console.error(e); }
+                },
+
+                init() {
+                    this.loadMacro();
+                }
+            }
+        }
+    </script>
+</body>
+</html>
