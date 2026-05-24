@@ -5,9 +5,11 @@ from typing import Literal
 
 class Settings(BaseSettings):
     # LLM
-    llm_provider: Literal["anthropic", "openai"] = "anthropic"
+    llm_provider: Literal["anthropic", "openai", "portkey", "gemini"] = "anthropic"
     anthropic_api_key: str = ""
     openai_api_key: str = ""
+    portkey_api_key: str = ""
+    gemini_api_key: str = ""
 
     # Telegram
     telegram_bot_token: str = ""
@@ -27,6 +29,10 @@ class Settings(BaseSettings):
     market_open_hour: int = 9
     market_close_hour: int = 16
     enable_dashboard: bool = False
+    scan_universe: str = "nifty50"  # nifty30, nifty50, nifty100, nifty200
+    momentum_threshold: int = 3  # Minimum momentum score (1-5) to include
+    auto_debate: bool = True  # Auto-run debate on top picks
+    auto_debate_top_n: int = 2  # How many top stocks to auto-debate
 
     class Config:
         env_file = ".env"

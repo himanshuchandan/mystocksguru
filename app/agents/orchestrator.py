@@ -53,7 +53,11 @@ async def run_market_scan() -> dict:
 
 def _build_basic_report(regime: str, macro: dict, momentum_stocks: list, news: dict) -> str:
     """Build a basic report when LLM is unavailable."""
-    lines = ["🤖 *AI Market Copilot - Scan Report*\n"]
+    from datetime import datetime
+    date_str = datetime.now().strftime("%A, %d %B %Y, %I:%M %p IST")
+
+    lines = [f"🤖 *AI Market Copilot - Scan Report*"]
+    lines.append(f"📅 {date_str}\n")
     lines.append(f"📊 *Market Regime:* {regime}\n")
 
     lines.append("*Macro Snapshot:*")

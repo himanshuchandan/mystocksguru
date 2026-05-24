@@ -72,8 +72,9 @@ def setup_env_encryption():
         return
 
     sensitive_keys = [
-        "ANTHROPIC_API_KEY", "OPENAI_API_KEY", "TELEGRAM_BOT_TOKEN",
-        "TELEGRAM_CHAT_ID", "KITE_API_KEY", "KITE_API_SECRET", "KITE_ACCESS_TOKEN",
+        "ANTHROPIC_API_KEY", "OPENAI_API_KEY", "PORTKEY_API_KEY", "GEMINI_API_KEY",
+        "TELEGRAM_BOT_TOKEN", "TELEGRAM_CHAT_ID",
+        "KITE_API_KEY", "KITE_API_SECRET", "KITE_ACCESS_TOKEN",
     ]
 
     lines = []
@@ -89,7 +90,7 @@ def setup_env_encryption():
             key = key.strip()
             value = value.strip()
 
-            if key in sensitive_keys and value and not is_encrypted(value) and value != f"your_{key.lower()}":
+            if key in sensitive_keys and value and not is_encrypted(value) and not value.startswith("your_"):
                 encrypted = encrypt_value(value)
                 new_lines.append(f"{key}={encrypted}\n")
                 print(f"🔒 Encrypted: {key}")

@@ -13,6 +13,14 @@ Your job is to analyze:
 - Breaking news
 - Portfolio holdings
 
+IMPORTANT - Data Verification:
+- Use Google Search to verify and enrich the data provided below with REAL-TIME information
+- Cross-reference with trusted sources: NSE India, BSE India, Moneycontrol, Economic Times, Bloomberg, Reuters, LiveMint, SEBI filings
+- Include any breaking news, RBI announcements, FII/DII data, earnings updates from TODAY
+- If you find more recent data than what's provided, USE IT and mention the source
+- Always cite sources for key claims (e.g., "Source: NSE" or "Source: Moneycontrol")
+- NEVER use unverified or speculative sources
+
 Your goal is NOT to blindly predict stocks.
 Your goal is to:
 - Identify high probability setups
@@ -32,15 +40,18 @@ Rules:
 - Mention confidence level (LOW / MEDIUM / HIGH)
 - Mention timeframe (intraday / swing / positional / long-term)
 - When uncertain, explicitly say so and reduce conviction
+- Always mention data sources used
 
 Output format:
-📊 Market Summary
+📅 Date
+📊 Market Summary (with sources)
 🏭 Sector Analysis
 🎯 High Conviction Opportunities (if any)
 ⚠️ Risk Alerts
 💼 Portfolio Suggestions (if portfolio data available)
 🛑 Stop Loss Recommendations
-📋 Watchlist Updates"""
+📋 Watchlist Updates
+📰 Key News & Events (with source links)"""
 
 
 async def generate_market_intelligence(
@@ -50,9 +61,23 @@ async def generate_market_intelligence(
     portfolio_data: dict = None,
 ) -> str:
     """Generate comprehensive market intelligence report."""
+    from app.config import settings
     llm = get_llm()
 
-    user_message = f"""Here is today's market data. Analyze and provide actionable intelligence.
+    from datetime import datetime
+    now = datetime.now()
+    date_str = now.strftime("%A, %d %B %Y, %I:%M %p IST")
+
+    # For non-Gemini providers, enrich with web search from trusted sources
+    web_search_context = ""
+    if settings.llm_provider != "gemini":
+        from app.services.web_search import get_enriched_market_context
+        web_search_context = get_enriched_market_context()
+
+    user_message = f"""📅 Date & Time: {date_str}
+
+Here is today's market data. Analyze and provide actionable intelligence.
+Always mention the date in your report header.
 
 ## Macro Snapshot
 {_format_macro(macro_data)}
@@ -63,10 +88,18 @@ async def generate_market_intelligence(
 ## News Headlines
 {_format_news(news_data)}
 
+{web_search_context}
+
 ## Portfolio
 {_format_portfolio(portfolio_data)}
 
-Provide your analysis now."""
+## Data Sources Used
+- Macro: Yahoo Finance (Nifty, Sensex, VIX, Crude, Gold, USD/INR, US indices)
+- Technical: Yahoo Finance OHLCV → RSI, MACD, EMA, ATR, Volume analysis
+- News: Moneycontrol, Economic Times headlines
+- Web Search: DuckDuckGo (targeted at Moneycontrol, LiveMint, ET, NSE, RBI, SEBI, Reuters)
+
+Provide your analysis now. Start with the date."""
 
     logger.info("🧠 Generating AI market intelligence...")
     response = await llm.generate(SYSTEM_PROMPT, user_message)
@@ -75,7 +108,14 @@ Provide your analysis now."""
 
 async def analyze_stock_detail(symbol: str, technical_data: dict, timeframe: str) -> str:
     """Get detailed AI analysis for a single stock."""
+    from app.config import settings
     llm = get_llm()
+
+    # For non-Gemini, enrich with stock-specific web search
+    web_context = ""
+    if settings.llm_provider != "gemini":
+        from app.services.web_search import get_enriched_stock_context
+        web_context = "\n" + get_enriched_stock_context(symbol)
 
     user_message = f"""Analyze this stock for a {timeframe} trade setup:
 
@@ -88,7 +128,7 @@ Above EMA50: {technical_data.get('above_ema50', 'N/A')}
 Volume Ratio: {technical_data.get('volume_ratio', 'N/A')}x
 ATR: ₹{technical_data.get('atr', 'N/A')}
 Momentum Score: {technical_data.get('momentum_score', 'N/A')}/5
-
+{web_context}
 Provide: Entry zone, Stop loss, Targets, Risk-reward, Confidence level, and Reasoning."""
 
     return await llm.generate(SYSTEM_PROMPT, user_message)
