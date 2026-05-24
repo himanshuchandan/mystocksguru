@@ -33,6 +33,7 @@ class Settings(BaseSettings):
     momentum_threshold: int = 3  # Minimum momentum score (1-5) to include
     auto_debate: bool = True  # Auto-run debate on top picks
     auto_debate_top_n: int = 2  # How many top stocks to auto-debate
+    auto_debate_min_score: int = 4  # Minimum momentum score to trigger auto-debate
 
     class Config:
         env_file = ".env"
@@ -42,8 +43,9 @@ class Settings(BaseSettings):
         """Auto-decrypt any ENC: prefixed values."""
         from app.utils import decrypt_value, is_encrypted
         for field_name in [
-            "anthropic_api_key", "openai_api_key", "telegram_bot_token",
-            "telegram_chat_id", "kite_api_key", "kite_api_secret", "kite_access_token",
+            "anthropic_api_key", "openai_api_key", "portkey_api_key", "gemini_api_key",
+            "telegram_bot_token", "telegram_chat_id",
+            "kite_api_key", "kite_api_secret", "kite_access_token",
         ]:
             value = getattr(self, field_name, "")
             if value and is_encrypted(value):

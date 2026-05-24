@@ -44,10 +44,28 @@ async def run_market_scan() -> dict:
     # 6. Send Telegram alert
     await send_telegram_alert(intelligence)
 
+    # 7. Auto-debate on top picks (if enabled)
+    debate_results = []
+    from app.config import settings
+    if settings.auto_debate and momentum_stocks:
+        top_picks = [
+            s for s in momentum_stocks
+            if s.get("momentum_score", 0) >= settings.auto_debate_min_score
+        ]
+        top_picks = sorted(top_picks, key=lambda x: x.get("momentum_score", 0), reverse=True)
+        top_picks = top_picks[:settings.auto_debate_top_n]
+
+        for stock in top_picks:
+            symbol = stock["symbol"]
+            logger.info(f"🗣️ Auto-debating: {symbol} (score: {stock['momentum_score']})")
+            debate = await run_stock_debate(symbol)
+            debate_results.append({"symbol": symbol, "debate": debate})
+
     return {
         "regime": regime,
         "momentum_stocks": len(momentum_stocks),
         "intelligence_preview": intelligence[:500] + "..." if len(intelligence) > 500 else intelligence,
+        "auto_debates": debate_results,
     }
 
 
