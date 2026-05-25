@@ -64,7 +64,7 @@ async def run_market_scan() -> dict:
     return {
         "regime": regime,
         "momentum_stocks": len(momentum_stocks),
-        "intelligence_preview": intelligence[:500] + "..." if len(intelligence) > 500 else intelligence,
+        "intelligence": intelligence,
         "auto_debates": debate_results,
     }
 

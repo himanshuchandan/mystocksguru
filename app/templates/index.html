@@ -136,7 +136,7 @@
                         const res = await fetch('/api/alerts/trigger-scan', { method: 'POST' });
                         const data = await res.json();
                         this.regime = data.result?.regime || '';
-                        this.intelligence = data.result?.intelligence_preview || '';
+                        this.intelligence = data.result?.intelligence || '';
                         this.lastScanTime = new Date().toLocaleTimeString();
                         await this.loadMacro();
                     } catch (e) { console.error(e); }
