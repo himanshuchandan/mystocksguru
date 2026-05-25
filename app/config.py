@@ -10,6 +10,7 @@ class Settings(BaseSettings):
     openai_api_key: str = ""
     portkey_api_key: str = ""
     gemini_api_key: str = ""
+    gemini_model: str = "gemini-2.5-flash"  # Options: gemini-2.5-flash, gemini-2.0-flash, gemini-1.5-flash
 
     # Telegram
     telegram_bot_token: str = ""

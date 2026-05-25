@@ -74,26 +74,26 @@ def _build_basic_report(regime: str, macro: dict, momentum_stocks: list, news: d
     from datetime import datetime
     date_str = datetime.now().strftime("%A, %d %B %Y, %I:%M %p IST")
 
-    lines = [f"🤖 *AI Market Copilot - Scan Report*"]
+    lines = [f"🤖 **AI Market Copilot - Scan Report**"]
     lines.append(f"📅 {date_str}\n")
-    lines.append(f"📊 *Market Regime:* {regime}\n")
+    lines.append(f"📊 **Market Regime:** {regime}\n")
 
-    lines.append("*Macro Snapshot:*")
+    lines.append("**Macro Snapshot:**")
     for key, val in list(macro.items())[:8]:
-        lines.append(f"  • {key.replace('_', ' ').title()}: {val.get('value', 'N/A')} ({val.get('change_pct', 0):+.2f}%)")
+        lines.append(f"- {key.replace('_', ' ').title()}: {val.get('value', 'N/A')} ({val.get('change_pct', 0):+.2f}%)")
 
     if momentum_stocks:
-        lines.append(f"\n🎯 *Momentum Stocks ({len(momentum_stocks)}):*")
+        lines.append(f"\n🎯 **Momentum Stocks ({len(momentum_stocks)}):**")
         for s in momentum_stocks[:5]:
-            lines.append(f"  • {s['symbol'].replace('.NS', '')}: ₹{s['price']} | RSI:{s['rsi']} | Score:{s['momentum_score']}/5 | {s['signal']}")
+            lines.append(f"- {s['symbol'].replace('.NS', '')}: ₹{s['price']} | RSI:{s['rsi']} | Score:{s['momentum_score']}/5 | {s['signal']}")
 
     headlines = news.get("moneycontrol", [])[:5] + news.get("economic_times", [])[:5]
     if headlines:
-        lines.append("\n📰 *Top Headlines:*")
+        lines.append("\n📰 **Top Headlines:**")
         for h in headlines[:5]:
-            lines.append(f"  • {h}")
+            lines.append(f"- {h}")
 
-    lines.append("\n⚠️ _LLM not configured - showing raw signals only_")
+    lines.append("\n⚠️ *LLM quota exhausted - showing raw signals only. Will retry on next scan.*")
     return "\n".join(lines)
 
 
