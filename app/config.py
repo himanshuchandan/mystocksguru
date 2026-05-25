@@ -26,6 +26,7 @@ class Settings(BaseSettings):
 
     # App
     scan_interval_minutes: int = 30
+    scan_enabled: bool = True  # Set to false to disable scheduled scans
     market_open_hour: int = 9
     market_close_hour: int = 16
     enable_dashboard: bool = False

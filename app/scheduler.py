@@ -28,6 +28,10 @@ async def scheduled_scan():
 
 def start_scheduler():
     """Start the background scheduler."""
+    if not settings.scan_enabled:
+        logger.info("⏸️ Scheduled scans disabled (SCAN_ENABLED=false)")
+        return
+
     scheduler.add_job(
         scheduled_scan,
         "interval",

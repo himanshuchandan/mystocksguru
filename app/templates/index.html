@@ -6,6 +6,7 @@
     <title>AI Market Copilot</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js" defer></script>
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
     <style>
         body { background: #0f172a; }
         .glass { background: rgba(30, 41, 59, 0.8); backdrop-filter: blur(10px); border: 1px solid rgba(148, 163, 184, 0.1); }
@@ -65,7 +66,7 @@
         <!-- AI Intelligence -->
         <section x-show="intelligence">
             <h2 class="text-lg font-semibold mb-3 text-slate-300">🧠 AI Intelligence Report</h2>
-            <div class="glass rounded-xl p-6 whitespace-pre-wrap text-sm leading-relaxed" x-text="intelligence"></div>
+            <div class="glass rounded-xl p-6 prose prose-invert prose-sm max-w-none leading-relaxed" x-html="renderMd(intelligence)"></div>
         </section>
 
         <!-- Stock Analyzer -->
@@ -88,8 +89,8 @@
                     🗣️ Debate
                 </button>
             </div>
-            <div x-show="stockAnalysis" class="glass rounded-xl p-6 mt-3 whitespace-pre-wrap text-sm leading-relaxed" x-text="stockAnalysis"></div>
-            <div x-show="debateResult" class="glass rounded-xl p-6 mt-3 whitespace-pre-wrap text-sm leading-relaxed" x-text="debateResult"></div>
+            <div x-show="stockAnalysis" class="glass rounded-xl p-6 mt-3 prose prose-invert prose-sm max-w-none leading-relaxed" x-html="renderMd(stockAnalysis)"></div>
+            <div x-show="debateResult" class="glass rounded-xl p-6 mt-3 prose prose-invert prose-sm max-w-none leading-relaxed" x-html="renderMd(debateResult)"></div>
         </section>
 
         <!-- Portfolio -->
@@ -201,6 +202,11 @@
 
                 init() {
                     this.loadMacro();
+                },
+
+                renderMd(text) {
+                    if (!text) return '';
+                    return marked.parse(text);
                 }
             }
         }
