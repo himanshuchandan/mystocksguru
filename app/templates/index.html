@@ -217,7 +217,23 @@
 
             async triggerScan() {
                 this.scanning = true;
-                try { const res = await fetch('/api/alerts/trigger-scan', { method: 'POST' }); const data = await res.json(); this.regime = data.result?.regime || ''; this.intelligence = data.result?.intelligence || ''; this.lastScanTime = new Date().toLocaleTimeString(); await this.loadMacro(); } catch(e) { console.error(e); }
+                try {
+                    const controller = new AbortController();
+                    const timeout = setTimeout(() => controller.abort(), 300000);
+                    const res = await fetch('/api/alerts/trigger-scan', { method: 'POST', signal: controller.signal });
+                    clearTimeout(timeout);
+                    const data = await res.json();
+                    this.regime = data.result?.regime || '';
+                    this.intelligence = data.result?.intelligence || '';
+                    this.lastScanTime = new Date().toLocaleTimeString();
+                    await this.loadMacro();
+                    if (this.intelligence) this.page = 'scanner';
+                } catch(e) {
+                    console.error('Scan error:', e);
+                    if (e.name === 'AbortError') {
+                        this.intelligence = '⏳ Scan timed out. Check Telegram for results.';
+                    }
+                }
                 this.scanning = false;
             },
             async loadMacro() {
