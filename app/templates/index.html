@@ -6,7 +6,7 @@
     <title>AI Market Copilot</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js" defer></script>
-    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/marked@9.1.6/marked.min.js"></script>
     <script src="https://unpkg.com/lightweight-charts@4.2.0/dist/lightweight-charts.standalone.production.js"></script>
     <style>
         body { background: #0f172a; }
@@ -229,7 +229,7 @@
                     this.lastScanTime = new Date().toLocaleTimeString();
                     await this.loadMacro();
                     if (this.intelligence) sessionStorage.setItem("lastIntelligence", this.intelligence);
-                    if (this.intelligence) { this.page = "scanner"; alert("Scan complete! Intelligence loaded: " + this.intelligence.length + " chars"); } else { alert("Scan complete but no intelligence in response. Check console."); };
+                    this.page = "scanner";
                 } catch(e) {
                     console.error('Scan error:', e);
                     if (e.name === 'AbortError') {
