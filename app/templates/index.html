@@ -7,209 +7,272 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js" defer></script>
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <script src="https://unpkg.com/lightweight-charts@4.2.0/dist/lightweight-charts.standalone.production.js"></script>
     <style>
         body { background: #0f172a; }
         .glass { background: rgba(30, 41, 59, 0.8); backdrop-filter: blur(10px); border: 1px solid rgba(148, 163, 184, 0.1); }
+        .sidebar-item { display: flex; align-items: center; gap: 0.75rem; padding: 0.75rem 1rem; border-radius: 0.5rem; font-size: 0.875rem; transition: all 0.15s; cursor: pointer; }
+        .sidebar-item:hover { background: rgba(51, 65, 85, 0.5); }
+        .sidebar-item.active { background: rgba(59, 130, 246, 0.2); color: #60a5fa; border: 1px solid rgba(59, 130, 246, 0.3); }
         .pulse-green { animation: pulse-g 2s infinite; }
         @keyframes pulse-g { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
+        .prose h1, .prose h2, .prose h3 { color: #e2e8f0; }
+        .prose p, .prose li { color: #cbd5e1; }
+        .prose strong { color: #f1f5f9; }
+        .autocomplete-item { padding: 0.5rem 0.75rem; cursor: pointer; font-size: 0.875rem; }
+        .autocomplete-item:hover { background: rgba(59, 130, 246, 0.2); }
     </style>
 </head>
-<body class="text-slate-200 min-h-screen" x-data="dashboard()">
-    <!-- Header -->
-    <header class="glass sticky top-0 z-50 px-6 py-4 flex justify-between items-center">
-        <div class="flex items-center gap-3">
-            <span class="text-2xl">🤖</span>
-            <h1 class="text-xl font-bold bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent">
-                AI Market Copilot
-            </h1>
-        </div>
-        <div class="flex items-center gap-4">
-            <span class="flex items-center gap-2 text-sm text-slate-400">
+<body class="text-slate-200 min-h-screen flex" x-data="app()">
+    <!-- Sidebar -->
+    <aside class="w-64 min-h-screen glass border-r border-slate-700 flex flex-col fixed left-0 top-0 z-40">
+        <div class="px-5 py-5 border-b border-slate-700">
+            <div class="flex items-center gap-3">
+                <span class="text-2xl">🤖</span>
+                <h1 class="text-lg font-bold bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent">Market Copilot</h1>
+            </div>
+            <div class="flex items-center gap-2 mt-2 text-xs text-slate-400">
                 <span class="w-2 h-2 rounded-full bg-green-400 pulse-green"></span> Running Locally
-            </span>
-            <button @click="triggerScan()" :disabled="scanning"
-                class="px-4 py-2 bg-blue-600 hover:bg-blue-500 rounded-lg text-sm font-medium disabled:opacity-50 transition">
-                <span x-show="!scanning">🔍 Scan Now</span>
+            </div>
+        </div>
+        <nav class="flex-1 p-3 space-y-1">
+            <div class="sidebar-item" :class="page === 'dashboard' && 'active'" @click="page = 'dashboard'"><span>📊</span> <span>Dashboard</span></div>
+            <div class="sidebar-item" :class="page === 'stocks' && 'active'" @click="page = 'stocks'"><span>🔍</span> <span>Stocks</span></div>
+            <div class="sidebar-item" :class="page === 'scanner' && 'active'" @click="page = 'scanner'"><span>🎯</span> <span>Scanner</span></div>
+            <div class="sidebar-item" :class="page === 'portfolio' && 'active'" @click="page = 'portfolio'; loadPortfolio()"><span>💼</span> <span>Portfolio</span></div>
+            <div class="sidebar-item" :class="page === 'reports' && 'active'" @click="page = 'reports'"><span>🧠</span> <span>AI Reports</span></div>
+        </nav>
+        <div class="p-3 border-t border-slate-700">
+            <button @click="triggerScan()" :disabled="scanning" class="w-full px-4 py-2.5 bg-blue-600 hover:bg-blue-500 rounded-lg text-sm font-medium disabled:opacity-50 transition flex items-center justify-center gap-2">
+                <span x-show="!scanning">🔍 Run Scan</span>
                 <span x-show="scanning">⏳ Scanning...</span>
             </button>
         </div>
-    </header>
+    </aside>
 
-    <main class="max-w-7xl mx-auto p-6 space-y-6">
-        <!-- Market Regime Banner -->
-        <div class="glass rounded-xl p-4 flex items-center justify-between" x-show="regime">
+    <!-- Main Content -->
+    <main class="ml-64 flex-1 min-h-screen">
+        <header class="sticky top-0 z-30 glass border-b border-slate-700 px-6 py-3 flex items-center justify-between">
             <div class="flex items-center gap-3">
-                <span class="text-2xl" x-text="regime === 'RISK_ON' ? '🟢' : regime === 'RISK_OFF' ? '🔴' : '🟡'"></span>
-                <div>
-                    <p class="text-sm text-slate-400">Market Regime</p>
-                    <p class="font-bold text-lg" x-text="regime"></p>
-                </div>
+                <h2 class="text-lg font-semibold capitalize" x-text="page"></h2>
+                <span x-show="regime" class="px-2 py-0.5 rounded text-xs font-medium" :class="regime === 'RISK_ON' ? 'bg-green-900 text-green-300' : regime === 'RISK_OFF' ? 'bg-red-900 text-red-300' : 'bg-yellow-900 text-yellow-300'" x-text="regime"></span>
             </div>
-            <p class="text-sm text-slate-400" x-text="lastScanTime"></p>
-        </div>
+            <p class="text-xs text-slate-400" x-show="lastScanTime" x-text="'Last scan: ' + lastScanTime"></p>
+        </header>
 
-        <!-- Macro Grid -->
-        <section>
-            <h2 class="text-lg font-semibold mb-3 text-slate-300">📊 Macro Dashboard</h2>
-            <div class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-3">
-                <template x-for="(val, key) in macro" :key="key">
-                    <div class="glass rounded-lg p-3">
-                        <p class="text-xs text-slate-400 uppercase" x-text="key.replace('_', ' ')"></p>
-                        <p class="text-lg font-bold" x-text="val.value"></p>
-                        <p class="text-sm" :class="val.change_pct >= 0 ? 'text-green-400' : 'text-red-400'"
-                           x-text="(val.change_pct >= 0 ? '+' : '') + val.change_pct + '%'"></p>
-                    </div>
-                </template>
-            </div>
-        </section>
-
-        <!-- AI Intelligence -->
-        <section x-show="intelligence">
-            <h2 class="text-lg font-semibold mb-3 text-slate-300">🧠 AI Intelligence Report</h2>
-            <div class="glass rounded-xl p-6 prose prose-invert prose-sm max-w-none leading-relaxed" x-html="renderMd(intelligence)"></div>
-        </section>
-
-        <!-- Stock Analyzer -->
-        <section>
-            <h2 class="text-lg font-semibold mb-3 text-slate-300">🎯 Analyze Stock</h2>
-            <div class="glass rounded-xl p-4 flex gap-3">
-                <input x-model="stockQuery" placeholder="Enter symbol (e.g. RELIANCE)"
-                    class="flex-1 bg-slate-800 border border-slate-600 rounded-lg px-4 py-2 text-sm focus:outline-none focus:border-blue-500"
-                    @keyup.enter="analyzeStock()">
-                <select x-model="timeframe" class="bg-slate-800 border border-slate-600 rounded-lg px-3 py-2 text-sm">
-                    <option value="swing">Swing</option>
-                    <option value="intraday">Intraday</option>
-                    <option value="positional">Positional</option>
-                    <option value="long-term">Long Term</option>
-                </select>
-                <button @click="analyzeStock()" class="px-4 py-2 bg-purple-600 hover:bg-purple-500 rounded-lg text-sm font-medium transition">
-                    Analyze
-                </button>
-                <button @click="debateStock()" class="px-4 py-2 bg-amber-600 hover:bg-amber-500 rounded-lg text-sm font-medium transition">
-                    🗣️ Debate
-                </button>
-            </div>
-            <div x-show="stockAnalysis" class="glass rounded-xl p-6 mt-3 prose prose-invert prose-sm max-w-none leading-relaxed" x-html="renderMd(stockAnalysis)"></div>
-            <div x-show="debateResult" class="glass rounded-xl p-6 mt-3 prose prose-invert prose-sm max-w-none leading-relaxed" x-html="renderMd(debateResult)"></div>
-        </section>
-
-        <!-- Portfolio -->
-        <section>
-            <h2 class="text-lg font-semibold mb-3 text-slate-300">💼 Portfolio</h2>
-            <div class="glass rounded-xl p-4">
-                <button @click="loadPortfolio()" class="px-4 py-2 bg-slate-700 hover:bg-slate-600 rounded-lg text-sm mb-3 transition">
-                    Load Portfolio
-                </button>
-                <div x-show="portfolio.status === 'not_connected'" class="text-slate-400 text-sm">
-                    Kite not connected. Add credentials to .env file.
-                </div>
-                <div x-show="portfolio.num_holdings > 0">
-                    <div class="grid grid-cols-3 gap-4 mb-3">
-                        <div><span class="text-xs text-slate-400">Invested</span><p class="font-bold">₹<span x-text="portfolio.total_invested?.toLocaleString()"></span></p></div>
-                        <div><span class="text-xs text-slate-400">Current</span><p class="font-bold">₹<span x-text="portfolio.total_current?.toLocaleString()"></span></p></div>
-                        <div><span class="text-xs text-slate-400">P&L</span><p class="font-bold" :class="portfolio.overall_pnl_pct >= 0 ? 'text-green-400' : 'text-red-400'" x-text="portfolio.overall_pnl_pct + '%'"></p></div>
-                    </div>
-                    <template x-for="alert in portfolio.risk_alerts || []">
-                        <p class="text-yellow-400 text-sm" x-text="alert"></p>
+        <div class="p-6">
+            <!-- DASHBOARD -->
+            <div x-show="page === 'dashboard'" class="space-y-6">
+                <div class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-3">
+                    <template x-for="(val, key) in macro" :key="key">
+                        <div class="glass rounded-lg p-3">
+                            <p class="text-xs text-slate-400 uppercase" x-text="key.replace('_', ' ')"></p>
+                            <p class="text-lg font-bold" x-text="val.value"></p>
+                            <p class="text-sm" :class="val.change_pct >= 0 ? 'text-green-400' : 'text-red-400'" x-text="(val.change_pct >= 0 ? '+' : '') + val.change_pct + '%'"></p>
+                        </div>
                     </template>
                 </div>
+                <div class="glass rounded-xl p-4" x-show="!Object.keys(macro).length">
+                    <p class="text-slate-400 text-sm">Click <strong>Run Scan</strong> to load market data, or use the <strong>Stocks</strong> tab to search any stock.</p>
+                </div>
             </div>
-        </section>
+
+            <!-- STOCKS -->
+            <div x-show="page === 'stocks'" class="space-y-4">
+                <div class="glass rounded-xl p-4">
+                    <div class="flex gap-3">
+                        <div class="relative flex-1">
+                            <input x-model="stockQuery" placeholder="Search any NSE stock — try RELIANCE, TCS, INFY, HDFCBANK, ICICIBANK" class="w-full bg-slate-800 border border-slate-600 rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:border-blue-500 pl-10" @input.debounce.200ms="autocomplete()" @keyup.enter="selectAndSearch()" @keydown.arrow-down.prevent="highlightNext()" @keydown.arrow-up.prevent="highlightPrev()" @keydown.escape="suggestions = []" @blur="setTimeout(() => suggestions = [], 200)">
+                            <span class="absolute left-3 top-2.5 text-slate-400">🔍</span>
+                            <div x-show="suggestions.length > 0" class="absolute top-full left-0 right-0 mt-1 bg-slate-800 border border-slate-600 rounded-lg overflow-hidden z-50 shadow-xl">
+                                <template x-for="(item, idx) in suggestions" :key="item.symbol">
+                                    <div class="autocomplete-item flex items-center justify-between" :class="idx === highlightedIdx && 'bg-blue-900/40'" @mousedown.prevent="pickSuggestion(item)">
+                                        <span class="font-medium" x-text="item.symbol"></span>
+                                        <span class="text-xs text-slate-500">NSE</span>
+                                    </div>
+                                </template>
+                            </div>
+                        </div>
+                        <button @click="searchStock()" class="px-5 py-2.5 bg-blue-600 hover:bg-blue-500 rounded-lg text-sm font-medium transition">Search</button>
+                    </div>
+                </div>
+
+                <!-- Stock Overview -->
+                <div x-show="stockOverview" class="space-y-4">
+                    <div class="glass rounded-xl p-5">
+                        <div class="flex items-center justify-between">
+                            <div>
+                                <h3 class="text-xl font-bold" x-text="stockOverview?.symbol?.replace('.NS','')"></h3>
+                                <div class="flex items-center gap-4 mt-1">
+                                    <span class="text-2xl font-bold" x-text="'₹' + stockOverview?.price"></span>
+                                    <span class="text-sm px-2 py-0.5 rounded" :class="stockOverview?.change_pct >= 0 ? 'bg-green-900 text-green-300' : 'bg-red-900 text-red-300'" x-text="(stockOverview?.change_pct >= 0 ? '+' : '') + stockOverview?.change_pct + '%'"></span>
+                                </div>
+                            </div>
+                            <div class="flex items-center gap-3">
+                                <span class="px-3 py-1 rounded-full text-xs font-medium" :class="{'bg-green-900 text-green-300': stockOverview?.signal === 'STRONG_BUY', 'bg-emerald-900 text-emerald-300': stockOverview?.signal === 'BUY', 'bg-yellow-900 text-yellow-300': stockOverview?.signal === 'NEUTRAL', 'bg-red-900 text-red-300': stockOverview?.signal === 'WEAK'}" x-text="stockOverview?.signal"></span>
+                                <span class="text-sm text-slate-400" x-text="'Score: ' + stockOverview?.momentum_score + '/5'"></span>
+                            </div>
+                        </div>
+                        <div class="grid grid-cols-2 md:grid-cols-5 gap-3 mt-4 pt-4 border-t border-slate-700">
+                            <div><p class="text-xs text-slate-400">RSI (14)</p><p class="font-semibold" :class="stockOverview?.rsi > 70 ? 'text-red-400' : stockOverview?.rsi < 30 ? 'text-green-400' : 'text-slate-200'" x-text="stockOverview?.rsi"></p></div>
+                            <div><p class="text-xs text-slate-400">MACD</p><p class="font-semibold" :class="stockOverview?.macd_bullish ? 'text-green-400' : 'text-red-400'" x-text="stockOverview?.macd_bullish ? 'Bullish' : 'Bearish'"></p></div>
+                            <div><p class="text-xs text-slate-400">Above EMA20</p><p class="font-semibold" :class="stockOverview?.above_ema20 ? 'text-green-400' : 'text-red-400'" x-text="stockOverview?.above_ema20 ? 'Yes' : 'No'"></p></div>
+                            <div><p class="text-xs text-slate-400">Above EMA50</p><p class="font-semibold" :class="stockOverview?.above_ema50 ? 'text-green-400' : 'text-red-400'" x-text="stockOverview?.above_ema50 ? 'Yes' : 'No'"></p></div>
+                            <div><p class="text-xs text-slate-400">Volume Ratio</p><p class="font-semibold" x-text="stockOverview?.volume_ratio + 'x'"></p></div>
+                        </div>
+                    </div>
+
+                    <div class="glass rounded-xl p-4">
+                        <div class="flex items-center justify-between mb-3">
+                            <h3 class="text-sm font-semibold text-slate-300">📈 Price Chart</h3>
+                            <div class="flex gap-2">
+                                <select x-model="chartPeriod" @change="loadChart()" class="bg-slate-800 border border-slate-600 rounded px-2 py-1 text-xs"><option value="1mo">1M</option><option value="3mo">3M</option><option value="6mo">6M</option><option value="1y">1Y</option><option value="2y">2Y</option><option value="5y">5Y</option></select>
+                                <select x-model="chartInterval" @change="loadChart()" class="bg-slate-800 border border-slate-600 rounded px-2 py-1 text-xs"><option value="1d">Daily</option><option value="1wk">Weekly</option><option value="1h">1H</option><option value="15m">15m</option><option value="5m">5m</option></select>
+                            </div>
+                        </div>
+                        <div id="stock-chart" style="height: 400px;"></div>
+                        <div id="volume-chart" style="height: 80px;"></div>
+                    </div>
+
+                    <div class="glass rounded-xl p-4">
+                        <div class="flex items-center gap-3 mb-3">
+                            <h3 class="text-sm font-semibold text-slate-300">🤖 AI Analysis</h3>
+                            <select x-model="timeframe" class="bg-slate-800 border border-slate-600 rounded px-2 py-1 text-xs"><option value="swing">Swing</option><option value="intraday">Intraday</option><option value="positional">Positional</option><option value="long-term">Long Term</option></select>
+                            <button @click="analyzeStock()" class="px-3 py-1.5 bg-purple-600 hover:bg-purple-500 rounded-lg text-xs font-medium transition">🧠 Deep Analyze</button>
+                            <button @click="debateStock()" class="px-3 py-1.5 bg-amber-600 hover:bg-amber-500 rounded-lg text-xs font-medium transition">🗣️ Bull vs Bear</button>
+                        </div>
+                        <div x-show="stockAnalysis" class="prose prose-invert prose-sm max-w-none leading-relaxed mt-3 pt-3 border-t border-slate-700" x-html="renderMd(stockAnalysis)"></div>
+                        <div x-show="debateResult" class="prose prose-invert prose-sm max-w-none leading-relaxed mt-3 pt-3 border-t border-slate-700" x-html="renderMd(debateResult)"></div>
+                        <p x-show="!stockAnalysis && !debateResult" class="text-slate-500 text-xs">Optional: Click Deep Analyze for AI insights or Bull vs Bear for multi-agent debate.</p>
+                    </div>
+                </div>
+
+
+            <!-- SCANNER -->
+            <div x-show="page === 'scanner'" class="space-y-4">
+                <div class="glass rounded-xl p-4 flex items-center justify-between">
+                    <div><h3 class="font-semibold">Market Scanner</h3><p class="text-xs text-slate-400 mt-1">Scans the configured universe for momentum opportunities</p></div>
+                    <button @click="triggerScan()" :disabled="scanning" class="px-4 py-2 bg-blue-600 hover:bg-blue-500 rounded-lg text-sm font-medium disabled:opacity-50 transition">
+                        <span x-show="!scanning">🔍 Run Scan Now</span><span x-show="scanning">⏳ Scanning...</span>
+                    </button>
+                </div>
+                <div x-show="intelligence" class="glass rounded-xl p-6 prose prose-invert prose-sm max-w-none leading-relaxed" x-html="renderMd(intelligence)"></div>
+                <div x-show="!intelligence" class="glass rounded-xl p-12 text-center"><p class="text-4xl mb-3">🎯</p><p class="text-slate-400">Run a scan to find momentum stocks in the Nifty universe.</p></div>
+            </div>
+
+            <!-- PORTFOLIO -->
+            <div x-show="page === 'portfolio'" class="space-y-4">
+                <div class="glass rounded-xl p-6">
+                    <div x-show="portfolio.status === 'not_connected'" class="text-center py-8"><p class="text-4xl mb-3">💼</p><p class="text-slate-400">Kite not connected. Add Zerodha credentials to .env file.</p></div>
+                    <div x-show="portfolio.num_holdings > 0">
+                        <div class="grid grid-cols-3 gap-6 mb-4">
+                            <div class="text-center"><p class="text-xs text-slate-400">Invested</p><p class="text-xl font-bold">₹<span x-text="portfolio.total_invested?.toLocaleString()"></span></p></div>
+                            <div class="text-center"><p class="text-xs text-slate-400">Current</p><p class="text-xl font-bold">₹<span x-text="portfolio.total_current?.toLocaleString()"></span></p></div>
+                            <div class="text-center"><p class="text-xs text-slate-400">P&L</p><p class="text-xl font-bold" :class="portfolio.overall_pnl_pct >= 0 ? 'text-green-400' : 'text-red-400'" x-text="portfolio.overall_pnl_pct + '%'"></p></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- REPORTS -->
+            <div x-show="page === 'reports'" class="space-y-4">
+                <div x-show="intelligence" class="glass rounded-xl p-6 prose prose-invert prose-sm max-w-none leading-relaxed" x-html="renderMd(intelligence)"></div>
+                <div x-show="!intelligence" class="glass rounded-xl p-12 text-center"><p class="text-4xl mb-3">🧠</p><p class="text-slate-400">No reports yet. Run a scan to generate an AI intelligence report.</p></div>
+            </div>
+        </div>
     </main>
 
     <script>
-        function dashboard() {
-            return {
-                scanning: false,
-                regime: '',
-                macro: {},
-                intelligence: '',
-                lastScanTime: '',
-                stockQuery: '',
-                timeframe: 'swing',
-                stockAnalysis: '',
-                debateResult: '',
-                portfolio: {},
+    function app() {
+        return {
+            page: 'stocks', scanning: false, regime: '', macro: {}, intelligence: '', lastScanTime: '',
+            stockQuery: '', timeframe: 'swing', stockAnalysis: '', debateResult: '', stockOverview: null,
+            portfolio: {}, chartPeriod: '6mo', chartInterval: '1d', suggestions: [], highlightedIdx: -1,
 
-                async triggerScan() {
-                    this.scanning = true;
-                    try {
-                        const res = await fetch('/api/alerts/trigger-scan', { method: 'POST' });
-                        const data = await res.json();
-                        this.regime = data.result?.regime || '';
-                        this.intelligence = data.result?.intelligence || '';
-                        this.lastScanTime = new Date().toLocaleTimeString();
-                        await this.loadMacro();
-                    } catch (e) { console.error(e); }
-                    this.scanning = false;
-                },
+            async autocomplete() {
+                const q = this.stockQuery.trim();
+                if (q.length < 2) { this.suggestions = []; return; }
+                try {
+                    const res = await fetch('/api/analysis/search?q=' + encodeURIComponent(q));
+                    this.suggestions = await res.json();
+                    this.highlightedIdx = -1;
+                } catch(e) { this.suggestions = []; }
+            },
+            highlightNext() { if (this.suggestions.length) this.highlightedIdx = (this.highlightedIdx + 1) % this.suggestions.length; },
+            highlightPrev() { if (this.suggestions.length) this.highlightedIdx = this.highlightedIdx <= 0 ? this.suggestions.length - 1 : this.highlightedIdx - 1; },
+            selectAndSearch() {
+                if (this.highlightedIdx >= 0 && this.suggestions[this.highlightedIdx]) this.stockQuery = this.suggestions[this.highlightedIdx].symbol;
+                this.suggestions = [];
+                this.searchStock();
+            },
+            pickSuggestion(item) { this.stockQuery = item.symbol; this.suggestions = []; this.searchStock(); },
 
-                async loadMacro() {
-                    try {
-                        const res = await fetch('/api/analysis/market-summary');
-                        const data = await res.json();
-                        this.macro = data.macro || {};
-                        this.regime = data.regime || this.regime;
-                    } catch (e) { console.error(e); }
-                },
-
-                async analyzeStock() {
-                    if (!this.stockQuery) return;
-                    this.stockAnalysis = 'Analyzing...';
-                    this.debateResult = '';
-                    try {
-                        const res = await fetch('/api/analysis/stock', {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({ symbol: this.stockQuery, timeframe: this.timeframe })
-                        });
-                        const text = await res.text();
-                        try {
-                            const data = JSON.parse(text);
-                            this.stockAnalysis = data.ai_analysis || data.error || JSON.stringify(data, null, 2);
-                        } catch {
-                            this.stockAnalysis = text || 'No response from server';
-                        }
-                    } catch (e) { this.stockAnalysis = 'Error: ' + e.message; }
-                },
-
-                async debateStock() {
-                    if (!this.stockQuery) return;
-                    this.debateResult = '🗣️ Running debate (Bull vs Bear vs Risk)... This takes ~30 seconds...';
-                    this.stockAnalysis = '';
-                    try {
-                        const res = await fetch('/api/analysis/debate', {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({ symbol: this.stockQuery, timeframe: this.timeframe })
-                        });
-                        const text = await res.text();
-                        try {
-                            const data = JSON.parse(text);
-                            this.debateResult = data.full_debate || data.error || JSON.stringify(data, null, 2);
-                        } catch {
-                            this.debateResult = text || 'No response from server';
-                        }
-                    } catch (e) { this.debateResult = 'Error: ' + e.message; }
-                },
-
-                async loadPortfolio() {
-                    try {
-                        const res = await fetch('/api/portfolio/analysis');
-                        this.portfolio = await res.json();
-                    } catch (e) { console.error(e); }
-                },
-
-                init() {
-                    this.loadMacro();
-                },
-
-                renderMd(text) {
-                    if (!text) return '';
-                    return marked.parse(text);
-                }
-            }
+            async triggerScan() {
+                this.scanning = true;
+                try { const res = await fetch('/api/alerts/trigger-scan', { method: 'POST' }); const data = await res.json(); this.regime = data.result?.regime || ''; this.intelligence = data.result?.intelligence || ''; this.lastScanTime = new Date().toLocaleTimeString(); await this.loadMacro(); } catch(e) { console.error(e); }
+                this.scanning = false;
+            },
+            async loadMacro() {
+                try { const res = await fetch('/api/analysis/market-summary'); const data = await res.json(); this.macro = data.macro || {}; this.regime = data.regime || this.regime; } catch(e) {}
+            },
+            async searchStock() {
+                if (!this.stockQuery) return;
+                this.stockQuery = this.stockQuery.trim().toUpperCase();
+                this.stockOverview = null; this.stockAnalysis = ''; this.debateResult = '';
+                try { const res = await fetch('/api/analysis/overview/' + this.stockQuery); const data = await res.json(); if (data.error) { alert(data.error); return; } this.stockOverview = data; } catch(e) { console.error(e); }
+                await this.$nextTick();
+                this.loadChart();
+            },
+            async analyzeStock() {
+                if (!this.stockQuery) return;
+                this.stockAnalysis = '⏳ Running AI analysis...'; this.debateResult = '';
+                try { const res = await fetch('/api/analysis/stock', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ symbol: this.stockQuery, timeframe: this.timeframe }) }); const text = await res.text(); try { const data = JSON.parse(text); this.stockAnalysis = data.ai_analysis || data.error || JSON.stringify(data, null, 2); } catch(e2) { this.stockAnalysis = text || 'No response'; } } catch(e) { this.stockAnalysis = 'Error: ' + e.message; }
+            },
+            async debateStock() {
+                if (!this.stockQuery) return;
+                this.debateResult = '⏳ Running Bull vs Bear debate (~30s)...'; this.stockAnalysis = '';
+                try { const res = await fetch('/api/analysis/debate', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ symbol: this.stockQuery, timeframe: this.timeframe }) }); const text = await res.text(); try { const data = JSON.parse(text); this.debateResult = data.full_debate || data.error || JSON.stringify(data, null, 2); } catch(e2) { this.debateResult = text || 'No response'; } } catch(e) { this.debateResult = 'Error: ' + e.message; }
+            },
+            async loadPortfolio() { try { const res = await fetch('/api/portfolio/analysis'); this.portfolio = await res.json(); } catch(e) {} },
+            async loadChart() {
+                if (!this.stockQuery) return;
+                await this.$nextTick();
+                try {
+                    const res = await fetch('/api/analysis/chart/' + this.stockQuery + '?period=' + this.chartPeriod + '&interval=' + this.chartInterval);
+                    const data = await res.json();
+                    if (data.error) return;
+                    const cc = document.getElementById('stock-chart'); const vc = document.getElementById('volume-chart');
+                    if (!cc) return; cc.innerHTML = ''; vc.innerHTML = '';
+                    const cw = cc.clientWidth || 800;
+                    const chart = LightweightCharts.createChart(cc, { width: cw, height: 400, layout: { background: { type: 'solid', color: '#1e293b' }, textColor: '#94a3b8' }, grid: { vertLines: { color: '#334155' }, horzLines: { color: '#334155' } }, crosshair: { mode: LightweightCharts.CrosshairMode.Normal }, rightPriceScale: { borderColor: '#475569' }, timeScale: { borderColor: '#475569', timeVisible: true } });
+                    const cs = chart.addCandlestickSeries({ upColor: '#26a69a', downColor: '#ef5350', borderUpColor: '#26a69a', borderDownColor: '#ef5350', wickUpColor: '#26a69a', wickDownColor: '#ef5350' });
+                    cs.setData(data.candles);
+                    const e20s = chart.addLineSeries({ color: '#fbbf24', lineWidth: 1, title: 'EMA20' });
+                    const e20 = this._calcEMA(data.candles.map(c => c.close), 20);
+                    e20s.setData(data.candles.map((c, i) => ({ time: c.time, value: e20[i] })).filter(d => d.value));
+                    const e50s = chart.addLineSeries({ color: '#60a5fa', lineWidth: 1, title: 'EMA50' });
+                    const e50 = this._calcEMA(data.candles.map(c => c.close), 50);
+                    e50s.setData(data.candles.map((c, i) => ({ time: c.time, value: e50[i] })).filter(d => d.value));
+                    const volChart = LightweightCharts.createChart(vc, { width: cw, height: 80, layout: { background: { type: 'solid', color: '#1e293b' }, textColor: '#94a3b8' }, grid: { vertLines: { visible: false }, horzLines: { visible: false } }, rightPriceScale: { borderColor: '#475569' }, timeScale: { borderColor: '#475569', visible: false } });
+                    const vs = volChart.addHistogramSeries({ priceFormat: { type: 'volume' } });
+                    vs.setData(data.volumes);
+                    chart.timeScale().subscribeVisibleLogicalRangeChange(function(range) { if (range) volChart.timeScale().setVisibleLogicalRange(range); });
+                    chart.timeScale().fitContent(); volChart.timeScale().fitContent();
+                    new ResizeObserver(function() { chart.applyOptions({ width: cc.clientWidth }); volChart.applyOptions({ width: cc.clientWidth }); }).observe(cc);
+                } catch(e) { console.error('Chart error:', e); }
+            },
+            _calcEMA(prices, period) {
+                const k = 2 / (period + 1); let ema = new Array(prices.length).fill(null);
+                if (prices.length < period) return ema;
+                let sum = 0; for (let i = 0; i < period; i++) sum += prices[i];
+                ema[period - 1] = sum / period;
+                for (let i = period; i < prices.length; i++) ema[i] = prices[i] * k + ema[i - 1] * (1 - k);
+                return ema;
+            },
+            renderMd(text) { if (!text) return ''; return marked.parse(text); },
+            init() { this.loadMacro(); }
         }
+    }
     </script>
 </body>
 </html>
