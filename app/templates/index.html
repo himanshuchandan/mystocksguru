@@ -224,10 +224,12 @@
                     clearTimeout(timeout);
                     const data = await res.json();
                     this.regime = data.result?.regime || '';
-                    this.intelligence = data.result?.intelligence || '';
+                    this.intelligence = data.result?.intelligence || data.result?.report || ""; console.log("Intelligence set to:", this.intelligence.substring(0, 100));
+                    console.log("Scan response:", JSON.stringify(data).substring(0, 500));
                     this.lastScanTime = new Date().toLocaleTimeString();
                     await this.loadMacro();
-                    if (this.intelligence) this.page = 'scanner';
+                    if (this.intelligence) sessionStorage.setItem("lastIntelligence", this.intelligence);
+                    if (this.intelligence) { this.page = "scanner"; alert("Scan complete! Intelligence loaded: " + this.intelligence.length + " chars"); } else { alert("Scan complete but no intelligence in response. Check console."); };
                 } catch(e) {
                     console.error('Scan error:', e);
                     if (e.name === 'AbortError') {
@@ -294,7 +296,7 @@
                 return ema;
             },
             renderMd(text) { if (!text) return ''; return marked.parse(text); },
-            init() { this.loadMacro(); }
+            init() { this.loadMacro(); const s = sessionStorage.getItem('lastIntelligence'); if (s) this.intelligence = s; }
         }
     }
     </script>
