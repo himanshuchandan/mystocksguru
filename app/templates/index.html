@@ -21,6 +21,7 @@
         .prose strong { color: #f1f5f9; }
         .autocomplete-item { padding: 0.5rem 0.75rem; cursor: pointer; font-size: 0.875rem; }
         .autocomplete-item:hover { background: rgba(59, 130, 246, 0.2); }
+        [x-cloak] { display: none !important; }
     </style>
 </head>
 <body class="text-slate-200 min-h-screen flex" x-data="app()">
@@ -80,18 +81,10 @@
             <!-- STOCKS -->
             <div x-show="page === 'stocks'" class="space-y-4">
                 <div class="glass rounded-xl p-4">
-                    <div class="flex gap-3">
+                    <div class="flex items-center gap-3">
                         <div class="relative flex-1">
-                            <input x-model="stockQuery" placeholder="Search any NSE stock — try RELIANCE, TCS, INFY, HDFCBANK, ICICIBANK" class="w-full bg-slate-800 border border-slate-600 rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:border-blue-500 pl-10" @input.debounce.200ms="autocomplete()" @keyup.enter="selectAndSearch()" @keydown.arrow-down.prevent="highlightNext()" @keydown.arrow-up.prevent="highlightPrev()" @keydown.escape="suggestions = []" @blur="setTimeout(() => suggestions = [], 200)">
+                            <input x-model="stockQuery" placeholder="Search any NSE stock — try RELIANCE, TCS, INFY, HDFCBANK, ICICIBANK" class="w-full bg-slate-800 border border-slate-600 rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:border-blue-500 pl-10" @input.debounce.200ms="autocomplete()" @keyup.enter="selectAndSearch()" @keydown.arrow-down.prevent="highlightNext()" @keydown.arrow-up.prevent="highlightPrev()" @keydown.escape="suggestions = []" @blur="setTimeout(() => suggestions = [], 200)" x-ref="searchInput">
                             <span class="absolute left-3 top-2.5 text-slate-400">🔍</span>
-                            <div x-show="suggestions.length > 0" class="absolute top-full left-0 right-0 mt-1 bg-slate-800 border border-slate-600 rounded-lg overflow-hidden z-50 shadow-xl">
-                                <template x-for="(item, idx) in suggestions" :key="item.symbol">
-                                    <div class="autocomplete-item flex items-center justify-between" :class="idx === highlightedIdx && 'bg-blue-900/40'" @mousedown.prevent="pickSuggestion(item)">
-                                        <span class="font-medium" x-text="item.symbol"></span>
-                                        <span class="text-xs text-slate-500">NSE</span>
-                                    </div>
-                                </template>
-                            </div>
                         </div>
                         <button @click="searchStock()" class="px-5 py-2.5 bg-blue-600 hover:bg-blue-500 rounded-lg text-sm font-medium transition">Search</button>
                     </div>
@@ -181,6 +174,21 @@
             </div>
         </div>
     </main>
+
+    <!-- Teleported Autocomplete Dropdown -->
+    <div x-show="suggestions.length > 0" x-cloak
+        class="fixed bg-slate-900 border border-slate-600 rounded-lg overflow-hidden shadow-2xl"
+        style="z-index: 99999;"
+        :style="$refs.searchInput ? (() => { const r = $refs.searchInput.getBoundingClientRect(); return 'top: ' + (r.bottom + 4) + 'px; left: ' + r.left + 'px; width: ' + r.width + 'px;'; })() : ''">
+        <template x-for="(item, idx) in suggestions" :key="item.symbol">
+            <div class="autocomplete-item flex items-center justify-between"
+                :class="idx === highlightedIdx && 'bg-blue-900/40'"
+                @mousedown.prevent="pickSuggestion(item)">
+                <span class="font-medium" x-text="item.symbol"></span>
+                <span class="text-xs text-slate-500">NSE</span>
+            </div>
+        </template>
+    </div>
 
     <script>
     function app() {
