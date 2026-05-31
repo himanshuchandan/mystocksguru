@@ -185,6 +185,7 @@
                             <span x-show="!shadowRunning">🤖 Run Cycle</span><span x-show="shadowRunning">⏳ Running...</span>
                         </button>
                         <button @click="initShadow()" class="px-4 py-2 bg-slate-700 hover:bg-slate-600 rounded-lg text-sm font-medium transition">⚙️ Init</button>
+                        <button @click="resetShadow()" class="px-4 py-2 bg-red-700 hover:bg-red-600 rounded-lg text-sm font-medium transition">🗑️ Reset</button>
                     </div>
                 </div>
 
@@ -354,6 +355,7 @@
             async loadShadow() { try { const res = await fetch('/api/shadow/summary'); this.shadow = await res.json(); } catch(e) { console.error(e); } },
             async runShadowCycle() { this.shadowRunning = true; try { const res = await fetch('/api/shadow/run-cycle', { method: 'POST' }); const data = await res.json(); this.shadow = data.result || data; } catch(e) { console.error(e); alert('Shadow cycle failed: ' + e.message); } this.shadowRunning = false; },
             async initShadow() { try { const res = await fetch('/api/shadow/initialize', { method: 'POST' }); await res.json(); await this.loadShadow(); } catch(e) { console.error(e); } },
+            async resetShadow() { if (!confirm('Reset Shadow Portfolio? This will delete ALL positions, trades, and history.')) return; try { const res = await fetch('/api/shadow/reset', { method: 'POST' }); await res.json(); await this.loadShadow(); } catch(e) { console.error(e); alert('Reset failed: ' + e.message); } },
             async loadChart() {
                 if (!this.stockQuery) return;
                 await this.$nextTick();
