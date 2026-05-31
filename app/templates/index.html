@@ -174,6 +174,7 @@
             <div x-show="page === 'reports'" class="space-y-4">
                 <div x-show="intelligence" class="glass rounded-xl p-6 prose prose-invert prose-sm max-w-none leading-relaxed" x-html="renderMd(intelligence)"></div>
                 <div x-show="!intelligence" class="glass rounded-xl p-12 text-center"><p class="text-4xl mb-3">🧠</p><p class="text-slate-400">No reports yet. Run a scan to generate an AI intelligence report.</p></div>
+            </div>
 
             <!-- SHADOW PORTFOLIO -->
             <div x-show="page === 'shadow'" class="space-y-4">
@@ -261,7 +262,6 @@
                     <p class="text-slate-400">Shadow Portfolio not initialized. Click "Init" to start with ₹20,000 virtual capital.</p>
                     <p class="text-xs text-slate-500 mt-2">The AI will automatically trade during market hours and track performance vs Nifty 50.</p>
                 </div>
-            </div>
             </div>
         </div>
     </main>
