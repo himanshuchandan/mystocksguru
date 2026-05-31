@@ -184,6 +184,7 @@
                         <button @click="runShadowCycle()" :disabled="shadowRunning" class="px-4 py-2 bg-purple-600 hover:bg-purple-500 rounded-lg text-sm font-medium disabled:opacity-50 transition">
                             <span x-show="!shadowRunning">🤖 Run Cycle</span><span x-show="shadowRunning">⏳ Running...</span>
                         </button>
+                        <input x-model.number="shadowCapital" type="number" class="w-24 bg-slate-800 border border-slate-600 rounded-lg px-2 py-2 text-sm text-center" placeholder="Capital">
                         <button @click="initShadow()" class="px-4 py-2 bg-slate-700 hover:bg-slate-600 rounded-lg text-sm font-medium transition">⚙️ Init</button>
                         <button @click="resetShadow()" class="px-4 py-2 bg-red-700 hover:bg-red-600 rounded-lg text-sm font-medium transition">🗑️ Reset</button>
                     </div>
@@ -260,7 +261,7 @@
                 <!-- Empty State -->
                 <div x-show="!shadow.portfolio" class="glass rounded-xl p-12 text-center">
                     <p class="text-4xl mb-3">👻</p>
-                    <p class="text-slate-400">Shadow Portfolio not initialized. Click "Init" to start with ₹20,000 virtual capital.</p>
+                    <p class="text-slate-400">Shadow Portfolio not initialized. Set your capital amount and click "Init" to start.</p>
                     <p class="text-xs text-slate-500 mt-2">The AI will automatically trade during market hours and track performance vs Nifty 50.</p>
                 </div>
             </div>
@@ -287,7 +288,7 @@
         return {
             page: 'stocks', scanning: false, regime: '', macro: {}, intelligence: '', lastScanTime: '',
             stockQuery: '', timeframe: 'swing', stockAnalysis: '', debateResult: '', stockOverview: null,
-            portfolio: {}, shadow: {}, shadowRunning: false, chartPeriod: '6mo', chartInterval: '1d', suggestions: [], highlightedIdx: -1,
+            portfolio: {}, shadow: {}, shadowRunning: false, shadowCapital: 20000, chartPeriod: '6mo', chartInterval: '1d', suggestions: [], highlightedIdx: -1,
 
             async autocomplete() {
                 const q = this.stockQuery.trim();
@@ -354,8 +355,8 @@
             async loadPortfolio() { try { const res = await fetch('/api/portfolio/analysis'); this.portfolio = await res.json(); } catch(e) {} },
             async loadShadow() { try { const res = await fetch('/api/shadow/summary'); this.shadow = await res.json(); } catch(e) { console.error(e); } },
             async runShadowCycle() { this.shadowRunning = true; try { const res = await fetch('/api/shadow/run-cycle', { method: 'POST' }); const data = await res.json(); this.shadow = data.result || data; } catch(e) { console.error(e); alert('Shadow cycle failed: ' + e.message); } this.shadowRunning = false; },
-            async initShadow() { try { const res = await fetch('/api/shadow/initialize', { method: 'POST' }); await res.json(); await this.loadShadow(); } catch(e) { console.error(e); } },
-            async resetShadow() { if (!confirm('Reset Shadow Portfolio? This will delete ALL positions, trades, and history.')) return; try { const res = await fetch('/api/shadow/reset', { method: 'POST' }); await res.json(); await this.loadShadow(); } catch(e) { console.error(e); alert('Reset failed: ' + e.message); } },
+            async initShadow() { try { const res = await fetch('/api/shadow/initialize?capital=' + this.shadowCapital, { method: 'POST' }); await res.json(); await this.loadShadow(); } catch(e) { console.error(e); } },
+            async resetShadow() { if (!confirm('Reset Shadow Portfolio? This will delete ALL positions, trades, and history.')) return; try { const res = await fetch('/api/shadow/reset?capital=' + this.shadowCapital, { method: 'POST' }); await res.json(); await this.loadShadow(); } catch(e) { console.error(e); alert('Reset failed: ' + e.message); } },
             async loadChart() {
                 if (!this.stockQuery) return;
                 await this.$nextTick();

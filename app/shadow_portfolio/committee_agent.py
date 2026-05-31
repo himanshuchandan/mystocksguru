@@ -8,7 +8,7 @@ from app.llm.provider import get_llm
 from loguru import logger
 
 
-COMMITTEE_SYSTEM_PROMPT = """You are the AI Investment Committee for a shadow portfolio managing ₹20,000 of virtual capital.
+COMMITTEE_SYSTEM_PROMPT_TEMPLATE = """You are the AI Investment Committee for a shadow portfolio managing ₹{capital:,.0f} of virtual capital.
 
 Your role is to review trade recommendations and decide which ones to APPROVE or REJECT.
 
@@ -22,7 +22,7 @@ You are NOT a yes-man. You must:
 
 You have strict rules:
 - Max 5 open positions at any time
-- Max 10% capital per trade (₹2,000 max per position)
+- Max 10% capital per trade (₹{max_per_trade:,.0f} max per position)
 - Stop loss MANDATORY (max 4% from entry)
 - Risk-reward minimum 1:2
 - No re-entry for 2 days after a stop-loss hit on same stock
@@ -138,7 +138,12 @@ async def review_opportunities(
     context = "\n".join(context_lines)
     
     logger.info(f"🏛️ Investment Committee reviewing {len(candidates)} candidates...")
-    response = await llm.generate(COMMITTEE_SYSTEM_PROMPT, context, temperature=0.2)
+    capital = portfolio_state.get('portfolio_value', 20000)
+    system_prompt = COMMITTEE_SYSTEM_PROMPT_TEMPLATE.format(
+        capital=capital,
+        max_per_trade=capital * 0.10,
+    )
+    response = await llm.generate(system_prompt, context, temperature=0.2)
     
     # Parse response
     approved = _parse_committee_response(response)
