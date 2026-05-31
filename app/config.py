@@ -37,6 +37,13 @@ class Settings(BaseSettings):
     auto_debate_top_n: int = 2  # How many top stocks to auto-debate
     auto_debate_min_score: int = 4  # Minimum momentum score to trigger auto-debate
 
+    # Shadow Portfolio
+    shadow_portfolio_enabled: bool = True
+    shadow_portfolio_capital: float = 20000.0
+    shadow_max_positions: int = 5
+    shadow_max_position_pct: float = 0.10  # 10% per trade
+    shadow_max_stop_loss_pct: float = 0.04  # 4% max SL
+
     class Config:
         env_file = ".env"
 

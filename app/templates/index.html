@@ -42,6 +42,7 @@
             <div class="sidebar-item" :class="page === 'scanner' && 'active'" @click="page = 'scanner'"><span>🎯</span> <span>Scanner</span></div>
             <div class="sidebar-item" :class="page === 'portfolio' && 'active'" @click="page = 'portfolio'; loadPortfolio()"><span>💼</span> <span>Portfolio</span></div>
             <div class="sidebar-item" :class="page === 'reports' && 'active'" @click="page = 'reports'"><span>🧠</span> <span>AI Reports</span></div>
+            <div class="sidebar-item" :class="page === 'shadow' && 'active'" @click="page = 'shadow'; loadShadow()"><span>👻</span> <span>Shadow Portfolio</span></div>
         </nav>
         <div class="p-3 border-t border-slate-700">
             <button @click="triggerScan()" :disabled="scanning" class="w-full px-4 py-2.5 bg-blue-600 hover:bg-blue-500 rounded-lg text-sm font-medium disabled:opacity-50 transition flex items-center justify-center gap-2">
@@ -173,6 +174,94 @@
             <div x-show="page === 'reports'" class="space-y-4">
                 <div x-show="intelligence" class="glass rounded-xl p-6 prose prose-invert prose-sm max-w-none leading-relaxed" x-html="renderMd(intelligence)"></div>
                 <div x-show="!intelligence" class="glass rounded-xl p-12 text-center"><p class="text-4xl mb-3">🧠</p><p class="text-slate-400">No reports yet. Run a scan to generate an AI intelligence report.</p></div>
+
+            <!-- SHADOW PORTFOLIO -->
+            <div x-show="page === 'shadow'" class="space-y-4">
+                <div class="glass rounded-xl p-4 flex items-center justify-between">
+                    <div><h3 class="font-semibold">👻 AI Shadow Portfolio</h3><p class="text-xs text-slate-400 mt-1">Virtual paper trading powered by AI Investment Committee</p></div>
+                    <div class="flex gap-2">
+                        <button @click="runShadowCycle()" :disabled="shadowRunning" class="px-4 py-2 bg-purple-600 hover:bg-purple-500 rounded-lg text-sm font-medium disabled:opacity-50 transition">
+                            <span x-show="!shadowRunning">🤖 Run Cycle</span><span x-show="shadowRunning">⏳ Running...</span>
+                        </button>
+                        <button @click="initShadow()" class="px-4 py-2 bg-slate-700 hover:bg-slate-600 rounded-lg text-sm font-medium transition">⚙️ Init</button>
+                    </div>
+                </div>
+
+                <!-- Portfolio Summary Cards -->
+                <div x-show="shadow.portfolio" class="grid grid-cols-2 md:grid-cols-4 gap-3">
+                    <div class="glass rounded-lg p-3"><p class="text-xs text-slate-400">Initial Capital</p><p class="text-lg font-bold">₹<span x-text="shadow.portfolio?.initial_capital?.toLocaleString()"></span></p></div>
+                    <div class="glass rounded-lg p-3"><p class="text-xs text-slate-400">Current Value</p><p class="text-lg font-bold" :class="shadow.portfolio?.total_return_pct >= 0 ? 'text-green-400' : 'text-red-400'">₹<span x-text="shadow.portfolio?.current_value?.toLocaleString()"></span></p></div>
+                    <div class="glass rounded-lg p-3"><p class="text-xs text-slate-400">Cash</p><p class="text-lg font-bold">₹<span x-text="shadow.portfolio?.cash_balance?.toLocaleString()"></span></p></div>
+                    <div class="glass rounded-lg p-3"><p class="text-xs text-slate-400">Total Return</p><p class="text-lg font-bold" :class="shadow.portfolio?.total_return_pct >= 0 ? 'text-green-400' : 'text-red-400'" x-text="(shadow.portfolio?.total_return_pct >= 0 ? '+' : '') + shadow.portfolio?.total_return_pct + '%'"></p></div>
+                </div>
+
+                <!-- Performance Metrics -->
+                <div x-show="shadow.performance" class="glass rounded-xl p-4">
+                    <h4 class="text-sm font-semibold text-slate-300 mb-3">📊 Performance</h4>
+                    <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+                        <div><p class="text-xs text-slate-400">Win Rate</p><p class="font-semibold" x-text="shadow.performance?.win_rate + '%'"></p></div>
+                        <div><p class="text-xs text-slate-400">Total Trades</p><p class="font-semibold" x-text="shadow.performance?.total_trades"></p></div>
+                        <div><p class="text-xs text-slate-400">Max Drawdown</p><p class="font-semibold text-red-400" x-text="'-' + shadow.performance?.max_drawdown_pct + '%'"></p></div>
+                        <div><p class="text-xs text-slate-400">Alpha vs Nifty</p><p class="font-semibold" :class="shadow.performance?.alpha >= 0 ? 'text-green-400' : 'text-red-400'" x-text="(shadow.performance?.alpha >= 0 ? '+' : '') + shadow.performance?.alpha + '%'"></p></div>
+                    </div>
+                    <div class="grid grid-cols-2 gap-4 mt-3 pt-3 border-t border-slate-700">
+                        <div><p class="text-xs text-slate-400">Portfolio Return</p><p class="font-semibold" :class="shadow.performance?.total_return_pct >= 0 ? 'text-green-400' : 'text-red-400'" x-text="shadow.performance?.total_return_pct + '%'"></p></div>
+                        <div><p class="text-xs text-slate-400">Nifty 50 Return</p><p class="font-semibold" x-text="shadow.performance?.nifty_return_pct + '%'"></p></div>
+                    </div>
+                </div>
+
+                <!-- Open Positions -->
+                <div x-show="shadow.positions?.length" class="glass rounded-xl p-4">
+                    <h4 class="text-sm font-semibold text-slate-300 mb-3">📈 Open Positions</h4>
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-sm">
+                            <thead><tr class="text-xs text-slate-400 border-b border-slate-700"><th class="py-2 text-left">Symbol</th><th class="text-right">Entry</th><th class="text-right">Current</th><th class="text-right">P&L</th><th class="text-right">SL</th><th class="text-right">Target</th><th class="text-right">Days</th></tr></thead>
+                            <tbody>
+                                <template x-for="pos in shadow.positions" :key="pos.symbol">
+                                    <tr class="border-b border-slate-800"><td class="py-2 font-medium" x-text="pos.symbol"></td><td class="text-right" x-text="'₹' + pos.entry_price"></td><td class="text-right" x-text="'₹' + pos.current_price"></td><td class="text-right" :class="pos.pnl_pct >= 0 ? 'text-green-400' : 'text-red-400'" x-text="(pos.pnl_pct >= 0 ? '+' : '') + pos.pnl_pct + '%'"></td><td class="text-right text-red-400" x-text="'₹' + pos.stop_loss"></td><td class="text-right text-green-400" x-text="'₹' + pos.target_price"></td><td class="text-right" x-text="pos.holding_days"></td></tr>
+                                </template>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Recent Trades -->
+                <div x-show="shadow.recent_trades?.length" class="glass rounded-xl p-4">
+                    <h4 class="text-sm font-semibold text-slate-300 mb-3">📋 Recent Trades</h4>
+                    <div class="space-y-2">
+                        <template x-for="trade in shadow.recent_trades?.slice(0, 10)" :key="trade.symbol + trade.trade_date">
+                            <div class="flex items-center justify-between py-2 border-b border-slate-800">
+                                <div><span class="font-medium" x-text="trade.symbol"></span><span class="text-xs text-slate-400 ml-2" x-text="trade.holding_days + 'd'"></span></div>
+                                <div class="text-right"><span :class="trade.profit_loss >= 0 ? 'text-green-400' : 'text-red-400'" x-text="'₹' + trade.profit_loss + ' (' + trade.profit_loss_pct + '%)'"></span></div>
+                            </div>
+                        </template>
+                    </div>
+                </div>
+
+                <!-- AI Decisions Log -->
+                <div x-show="shadow.ai_decisions?.length" class="glass rounded-xl p-4">
+                    <h4 class="text-sm font-semibold text-slate-300 mb-3">🧠 AI Decisions</h4>
+                    <div class="space-y-2">
+                        <template x-for="log in shadow.ai_decisions" :key="log.time">
+                            <div class="p-3 bg-slate-800/50 rounded-lg">
+                                <div class="flex items-center justify-between">
+                                    <span class="font-medium" x-text="log.symbol"></span>
+                                    <span class="text-xs px-2 py-0.5 rounded" :class="log.decision === 'BUY' ? 'bg-green-900 text-green-300' : log.decision === 'SELL' ? 'bg-red-900 text-red-300' : 'bg-slate-700 text-slate-300'" x-text="log.decision"></span>
+                                </div>
+                                <p class="text-xs text-slate-400 mt-1" x-text="log.reasoning"></p>
+                                <p class="text-xs text-slate-500 mt-1" x-text="log.time"></p>
+                            </div>
+                        </template>
+                    </div>
+                </div>
+
+                <!-- Empty State -->
+                <div x-show="!shadow.portfolio" class="glass rounded-xl p-12 text-center">
+                    <p class="text-4xl mb-3">👻</p>
+                    <p class="text-slate-400">Shadow Portfolio not initialized. Click "Init" to start with ₹20,000 virtual capital.</p>
+                    <p class="text-xs text-slate-500 mt-2">The AI will automatically trade during market hours and track performance vs Nifty 50.</p>
+                </div>
+            </div>
             </div>
         </div>
     </main>
@@ -197,7 +286,7 @@
         return {
             page: 'stocks', scanning: false, regime: '', macro: {}, intelligence: '', lastScanTime: '',
             stockQuery: '', timeframe: 'swing', stockAnalysis: '', debateResult: '', stockOverview: null,
-            portfolio: {}, chartPeriod: '6mo', chartInterval: '1d', suggestions: [], highlightedIdx: -1,
+            portfolio: {}, shadow: {}, shadowRunning: false, chartPeriod: '6mo', chartInterval: '1d', suggestions: [], highlightedIdx: -1,
 
             async autocomplete() {
                 const q = this.stockQuery.trim();
@@ -262,6 +351,9 @@
                 try { const res = await fetch('/api/analysis/debate', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ symbol: this.stockQuery, timeframe: this.timeframe }) }); const text = await res.text(); try { const data = JSON.parse(text); this.debateResult = data.full_debate || data.error || JSON.stringify(data, null, 2); } catch(e2) { this.debateResult = text || 'No response'; } } catch(e) { this.debateResult = 'Error: ' + e.message; }
             },
             async loadPortfolio() { try { const res = await fetch('/api/portfolio/analysis'); this.portfolio = await res.json(); } catch(e) {} },
+            async loadShadow() { try { const res = await fetch('/api/shadow/summary'); this.shadow = await res.json(); } catch(e) { console.error(e); } },
+            async runShadowCycle() { this.shadowRunning = true; try { const res = await fetch('/api/shadow/run-cycle', { method: 'POST' }); const data = await res.json(); this.shadow = data.result || data; } catch(e) { console.error(e); alert('Shadow cycle failed: ' + e.message); } this.shadowRunning = false; },
+            async initShadow() { try { const res = await fetch('/api/shadow/initialize', { method: 'POST' }); await res.json(); await this.loadShadow(); } catch(e) { console.error(e); } },
             async loadChart() {
                 if (!this.stockQuery) return;
                 await this.$nextTick();

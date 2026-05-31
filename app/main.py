@@ -7,7 +7,7 @@ from pathlib import Path
 
 from app.config import settings
 from app.scheduler import start_scheduler, stop_scheduler
-from app.routers import alerts, portfolio, analysis
+from app.routers import alerts, portfolio, analysis, shadow_portfolio
 
 
 @asynccontextmanager
@@ -29,6 +29,7 @@ app = FastAPI(
 app.include_router(alerts.router, prefix="/api/alerts", tags=["Alerts"])
 app.include_router(portfolio.router, prefix="/api/portfolio", tags=["Portfolio"])
 app.include_router(analysis.router, prefix="/api/analysis", tags=["Analysis"])
+app.include_router(shadow_portfolio.router, prefix="/api/shadow", tags=["Shadow Portfolio"])
 
 
 @app.get("/health")
