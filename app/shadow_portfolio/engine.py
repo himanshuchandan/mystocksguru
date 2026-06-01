@@ -15,9 +15,10 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from loguru import logger
 
 from app.shadow_portfolio.models import (
-    Portfolio, Position, Trade, AnalysisLog, DailySnapshot,
+    Portfolio, Position, Trade, AnalysisLog, DailySnapshot, CycleLog,
     get_session_factory, init_db,
 )
+import json
 from app.shadow_portfolio.committee_agent import review_opportunities, review_positions
 from app.agents.technical_agent import scan_market, analyze_stock_technical
 from app.agents.macro_agent import get_macro_snapshot, get_market_regime
@@ -121,6 +122,13 @@ async def run_shadow_cycle():
         # Refresh after exits
         open_positions = await _get_open_positions(session)
         
+        # Track cycle data
+        cycle_candidates = []
+        cycle_approved = []
+        cycle_rejected = []
+        cycle_exit_decisions_log = []
+        portfolio_value_before = portfolio.portfolio_value
+        
         # Step 5: If room for new positions, scan opportunities
         num_open = len(open_positions)
         if num_open < MAX_POSITIONS and portfolio.cash_balance > 1000:
@@ -144,6 +152,12 @@ async def run_shadow_cycle():
                 and s.get("momentum_score", 0) >= 3
             ][:5]
             
+            # Track all candidates considered
+            cycle_candidates = [
+                {"symbol": s["symbol"].replace(".NS", ""), "momentum_score": s.get("momentum_score", 0), "price": s.get("price", 0)}
+                for s in candidates
+            ]
+            
             if candidates:
                 # Step 6: Investment Committee reviews
                 portfolio_state = {
@@ -158,6 +172,18 @@ async def run_shadow_cycle():
                     candidates, portfolio_state, market_context
                 )
                 
+                # Track approved/rejected
+                approved_symbols = {t["symbol"].replace(".NS", "") for t in approved_trades}
+                cycle_approved = [
+                    {"symbol": t["symbol"].replace(".NS", ""), "entry_price": t.get("entry_price"), "stop_loss": t.get("stop_loss"), "target": t.get("target"), "reasoning": t.get("reasoning", "")}
+                    for t in approved_trades
+                ]
+                cycle_rejected = [
+                    {"symbol": c["symbol"].replace(".NS", ""), "momentum_score": c.get("momentum_score", 0), "reason": "Rejected by Investment Committee"}
+                    for c in candidates
+                    if c["symbol"].replace(".NS", "") not in approved_symbols
+                ]
+                
                 # Step 7: Execute approved trades
                 for trade in approved_trades:
                     await _execute_virtual_buy(session, portfolio, trade, market_context)
@@ -170,7 +196,31 @@ async def run_shadow_cycle():
         await _recalculate_portfolio(session, portfolio)
         await session.commit()
         
-        logger.info(f"✅ Cycle complete. Portfolio: ₹{portfolio.portfolio_value:,.0f}")
+        # Get cycle number
+        result2 = await session.execute(select(func.count(CycleLog.id)))
+        cycle_number = (result2.scalar() or 0) + 1
+        
+        # Save cycle log
+        open_positions_final = await _get_open_positions(session)
+        cycle_log = CycleLog(
+            cycle_number=cycle_number,
+            market_context=market_context,
+            candidates_considered=json.dumps(cycle_candidates),
+            candidates_approved=json.dumps(cycle_approved),
+            candidates_rejected=json.dumps(cycle_rejected),
+            exit_decisions=json.dumps(cycle_exit_decisions_log),
+            portfolio_value_before=portfolio_value_before,
+            portfolio_value_after=portfolio.portfolio_value,
+            num_positions_after=len(open_positions_final),
+            summary=f"Considered {len(cycle_candidates)}, Approved {len(cycle_approved)}, Rejected {len(cycle_rejected)}",
+        )
+        session.add(cycle_log)
+        await session.commit()
+        
+        # Send Telegram notification
+        await _send_cycle_notification(cycle_number, cycle_candidates, cycle_approved, cycle_rejected, portfolio)
+        
+        logger.info(f"✅ Cycle #{cycle_number} complete. Portfolio: ₹{portfolio.portfolio_value:,.0f}")
         logger.info("=" * 60)
         
         return await get_portfolio_summary()
@@ -335,6 +385,7 @@ async def reset_portfolio(capital: float = 20000.0) -> dict:
         await session.execute(delete(Trade))
         await session.execute(delete(AnalysisLog))
         await session.execute(delete(DailySnapshot))
+        await session.execute(delete(CycleLog))
         await session.commit()
     
     return await initialize_portfolio(capital)
@@ -620,3 +671,65 @@ def _log_to_dict(l: AnalysisLog) -> dict:
         "committee_verdict": l.committee_verdict,
         "time": l.analysis_time.isoformat() if l.analysis_time else None,
     }
+
+
+async def _send_cycle_notification(cycle_number: int, candidates: list, approved: list, rejected: list, portfolio: Portfolio):
+    """Send Telegram notification for cycle completion."""
+    try:
+        from app.services.telegram_service import send_telegram_alert
+        
+        msg = f"🤖 *Shadow Portfolio — Cycle #{cycle_number}*\n\n"
+        msg += f"💰 Portfolio: ₹{portfolio.portfolio_value:,.0f}\n"
+        msg += f"💵 Cash: ₹{portfolio.cash_balance:,.0f}\n\n"
+        
+        if candidates:
+            msg += f"📋 *Candidates Considered:* {len(candidates)}\n"
+            for c in candidates:
+                msg += f"  • {c['symbol']} (Score: {c.get('momentum_score', '?')})\n"
+        else:
+            msg += "📋 No candidates scanned this cycle\n"
+        
+        if approved:
+            msg += f"\n✅ *Approved:* {len(approved)}\n"
+            for a in approved:
+                msg += f"  • {a['symbol']} @ ₹{a.get('entry_price', '?')}\n"
+        
+        if rejected:
+            msg += f"\n❌ *Rejected:* {len(rejected)}\n"
+            for r in rejected:
+                msg += f"  • {r['symbol']} — {r.get('reason', 'N/A')}\n"
+        
+        if not candidates and not approved and not rejected:
+            msg += "\n⏸️ No new opportunities (portfolio full or low cash)"
+        
+        await send_telegram_alert(msg)
+    except Exception as e:
+        logger.warning(f"Failed to send cycle notification: {e}")
+
+
+async def get_cycle_history(limit: int = 20) -> list[dict]:
+    """Get history of all cycle runs."""
+    await init_db()
+    factory = get_session_factory()
+    
+    async with factory() as session:
+        result = await session.execute(
+            select(CycleLog).order_by(CycleLog.cycle_time.desc()).limit(limit)
+        )
+        cycles = result.scalars().all()
+        return [
+            {
+                "cycle_number": c.cycle_number,
+                "cycle_time": c.cycle_time.isoformat() if c.cycle_time else None,
+                "market_context": c.market_context,
+                "candidates_considered": json.loads(c.candidates_considered) if c.candidates_considered else [],
+                "candidates_approved": json.loads(c.candidates_approved) if c.candidates_approved else [],
+                "candidates_rejected": json.loads(c.candidates_rejected) if c.candidates_rejected else [],
+                "exit_decisions": json.loads(c.exit_decisions) if c.exit_decisions else [],
+                "portfolio_value_before": c.portfolio_value_before,
+                "portfolio_value_after": c.portfolio_value_after,
+                "num_positions_after": c.num_positions_after,
+                "summary": c.summary,
+            }
+            for c in cycles
+        ]

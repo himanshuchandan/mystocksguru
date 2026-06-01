@@ -218,10 +218,10 @@
                     <h4 class="text-sm font-semibold text-slate-300 mb-3">📈 Open Positions</h4>
                     <div class="overflow-x-auto">
                         <table class="w-full text-sm">
-                            <thead><tr class="text-xs text-slate-400 border-b border-slate-700"><th class="py-2 text-left">Symbol</th><th class="text-right">Entry</th><th class="text-right">Current</th><th class="text-right">P&L</th><th class="text-right">SL</th><th class="text-right">Target</th><th class="text-right">Days</th></tr></thead>
+                            <thead><tr class="text-xs text-slate-400 border-b border-slate-700"><th class="py-2 text-left">Symbol</th><th class="text-right">Qty</th><th class="text-right">Entry</th><th class="text-right">Current</th><th class="text-right">P&L</th><th class="text-right">SL</th><th class="text-right">Target</th><th class="text-right">Days</th></tr></thead>
                             <tbody>
                                 <template x-for="pos in shadow.positions" :key="pos.symbol">
-                                    <tr class="border-b border-slate-800"><td class="py-2 font-medium" x-text="pos.symbol"></td><td class="text-right" x-text="'₹' + pos.entry_price"></td><td class="text-right" x-text="'₹' + pos.current_price"></td><td class="text-right" :class="pos.pnl_pct >= 0 ? 'text-green-400' : 'text-red-400'" x-text="(pos.pnl_pct >= 0 ? '+' : '') + pos.pnl_pct + '%'"></td><td class="text-right text-red-400" x-text="'₹' + pos.stop_loss"></td><td class="text-right text-green-400" x-text="'₹' + pos.target_price"></td><td class="text-right" x-text="pos.holding_days"></td></tr>
+                                    <tr class="border-b border-slate-800"><td class="py-2 font-medium" x-text="pos.symbol"></td><td class="text-right font-bold text-blue-400" x-text="pos.quantity"></td><td class="text-right" x-text="'₹' + pos.entry_price"></td><td class="text-right" x-text="'₹' + pos.current_price"></td><td class="text-right" :class="pos.pnl_pct >= 0 ? 'text-green-400' : 'text-red-400'" x-text="(pos.pnl_pct >= 0 ? '+' : '') + pos.pnl_pct + '%'"></td><td class="text-right text-red-400" x-text="'₹' + pos.stop_loss"></td><td class="text-right text-green-400" x-text="'₹' + pos.target_price"></td><td class="text-right" x-text="pos.holding_days"></td></tr>
                                 </template>
                             </tbody>
                         </table>

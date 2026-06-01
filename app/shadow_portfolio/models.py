@@ -103,6 +103,24 @@ class DailySnapshot(Base):
     nifty_cumulative_return_pct = Column(Float, default=0.0)
 
 
+class CycleLog(Base):
+    """Log of each shadow portfolio cycle run."""
+    __tablename__ = "shadow_cycle_logs"
+
+    id = Column(Integer, primary_key=True)
+    cycle_time = Column(DateTime, default=datetime.utcnow)
+    cycle_number = Column(Integer, nullable=False)
+    market_context = Column(Text, nullable=True)
+    candidates_considered = Column(Text, nullable=True)  # JSON list
+    candidates_approved = Column(Text, nullable=True)  # JSON list
+    candidates_rejected = Column(Text, nullable=True)  # JSON list
+    exit_decisions = Column(Text, nullable=True)  # JSON list
+    portfolio_value_before = Column(Float, nullable=True)
+    portfolio_value_after = Column(Float, nullable=True)
+    num_positions_after = Column(Integer, default=0)
+    summary = Column(Text, nullable=True)
+
+
 # Database setup
 _engine = None
 _session_factory = None

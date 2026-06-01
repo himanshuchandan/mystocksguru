@@ -47,3 +47,11 @@ async def take_snapshot():
     from app.shadow_portfolio.engine import take_daily_snapshot
     await take_daily_snapshot()
     return {"status": "snapshot_taken"}
+
+
+@router.get("/cycle-history")
+async def cycle_history(limit: int = 20):
+    """Get history of all shadow portfolio cycle runs."""
+    from app.shadow_portfolio.engine import get_cycle_history
+    cycles = await get_cycle_history(limit)
+    return {"cycles": cycles}
